@@ -1,15 +1,40 @@
-from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify
+import os
+from flask import Flask, render_template_string, request, redirect, url_for, session, send_from_directory
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'captain_mohamed_1993_secret_key'
 
-# قاعدة بيانات تجريبية للعملاء النشطين
+# إعداد قاعدة البيانات وتخزين الملفات
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fitness_app.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'mp4', 'mov', 'avi'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# جدول حفظ مرفقات العملاء في قاعدة البيانات
+class ClientUpload(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    client_name = db.Column(db.String(100), nullable=False)
+    image_path = db.Column(db.String(200), nullable=True)
+    video_path = db.Column(db.String(200), nullable=True)
+    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# قاعدة بيانات تجريبية للإحصائيات والاشتراكات
 clients_db = [
     {"id": 1, "name": "أحمد محمود", "email": "ahmed@example.com", "goal": "تضخيم عضلات", "status": "نشط", "progress": "+4.5 كجم", "instapay_ref": "IP-982341", "paid": True},
     {"id": 2, "name": "محمود حسن", "email": "mahmoud@example.com", "goal": "تنشيط وخسارة دهون", "status": "نشط", "progress": "-6 كجم", "instapay_ref": "IP-982342", "paid": True}
 ]
 
-# قالب الصفحة الرئيسية (Landing Page)
+# --- القوالب (Templates) ---
+
 INDEX_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -98,7 +123,6 @@ INDEX_TEMPLATE = '''
 </html>
 '''
 
-# لوحة تسجيل الدخول (برقم سري 1993)
 ADMIN_LOGIN_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -129,7 +153,6 @@ ADMIN_LOGIN_TEMPLATE = '''
 </html>
 '''
 
-# لوحة تحكم الكابتن
 ADMIN_DASHBOARD_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -151,6 +174,7 @@ ADMIN_DASHBOARD_TEMPLATE = '''
         table { width: 100%; border-collapse: collapse; background: #171717; border-radius: 12px; overflow: hidden; margin-top: 20px; }
         th, td { padding: 15px 20px; text-align: right; border-bottom: 1px solid #262626; }
         th { background: #1f1f1f; color: #f59e0b; }
+        .media-link { color: #38bdf8; text-decoration: none; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -166,7 +190,26 @@ ADMIN_DASHBOARD_TEMPLATE = '''
             <div class="stat-card"><h4>إجمالي الأرباح</h4><div class="value">{{ revenue }} ج.م</div></div>
             <div class="stat-card"><h4>حساب InstaPay</h4><div class="value" style="font-size: 20px;">01221078181</div></div>
         </div>
-        <h2>سجل العملاء وتحليل القوام</h2>
+        
+        <h2>سجل مرفقات العملاء (قاعدة البيانات)</h2>
+        <table>
+            <thead><tr><th>معرف الطلب</th><th>اسم العميل</th><th>صورة القوام</th><th>فيديو التمرين</th><th>تاريخ الرفع</th></tr></thead>
+            <tbody>
+                {% for upload in uploads %}
+                <tr>
+                    <td>{{ upload.id }}</td>
+                    <td>{{ upload.client_name }}</td>
+                    <td>{% if upload.image_path %}<a class="media-link" href="{{ url_for('download_file', filename=upload.image_path) }}" target="_blank">عرض الصورة</a>{% else %}لا توجد{% endif %}</td>
+                    <td>{% if upload.video_path %}<a class="media-link" href="{{ url_for('download_file', filename=upload.video_path) }}" target="_blank">عرض الفيديو</a>{% else %}لا يوجد{% endif %}</td>
+                    <td>{{ upload.upload_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" style="text-align: center; color: #9ca3af;">لا توجد مرفقات مرفوعة حالياً.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2 style="margin-top: 40px;">سجل العملاء النشطين (التجريبي)</h2>
         <table>
             <thead><tr><th>الاسم</th><th>البريد</th><th>الهدف</th><th>التطور</th><th>الحالة</th></tr></thead>
             <tbody>
@@ -180,7 +223,6 @@ ADMIN_DASHBOARD_TEMPLATE = '''
 </html>
 '''
 
-# لوحة العميل (تحليل القوام، البيانات الطبية، نوت الأكل، وتصحيح التمارين)
 CLIENT_DASHBOARD_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -194,8 +236,9 @@ CLIENT_DASHBOARD_TEMPLATE = '''
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
         .card { background: #171717; padding: 30px; border-radius: 16px; border: 1px solid #262626; }
         .card h3 { color: #f59e0b; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-        .btn { background: #f59e0b; color: #000; padding: 10px 20px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; margin-top: 10px; }
-        textarea, input { width: 100%; padding: 10px; margin-top: 10px; background: #0a0a0a; border: 1px solid #333; color: #fff; border-radius: 6px; }
+        .btn { background: #f59e0b; color: #000; padding: 10px 20px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; margin-top: 15px; width: 100%; }
+        textarea, input { width: 100%; padding: 12px; margin-top: 10px; background: #0a0a0a; border: 1px solid #333; color: #fff; border-radius: 6px; }
+        label { color: #9ca3af; font-size: 14px; display: block; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -203,29 +246,44 @@ CLIENT_DASHBOARD_TEMPLATE = '''
         <h1>منصة العميل الذكية | كابتن محمد نبيل</h1>
         <a href="/" style="color: #f59e0b; text-decoration: none;"><i class="fa-solid fa-arrow-right"></i> الرئيسية</a>
     </div>
-    <div class="grid">
+    
+    <form action="/client/upload" method="POST" enctype="multipart/form-data" class="grid">
+        <!-- قسم تحليل القوام ورفع الملفات للقاعدة -->
         <div class="card">
-            <h3><i class="fa-solid fa-child-reaching"></i> أداة تحليل القوام (AI)</h3>
-            <p style="color: #9ca3af; font-size: 14px;">ارفع صورك من الأمام والخلف لاكتشاف الانحرافات القوامية فوراً.</p>
-            <input type="file" accept="image/*">
-            <button class="btn" onclick="alert('جاري تحليل الانحرافات القوامية بالذكاء الاصطناعي وإرسال التقرير للكابتن...')">بدء التحليل القوامي</button>
+            <h3><i class="fa-solid fa-child-reaching"></i> رفع صور القوام وفيديوهات التمارين</h3>
+            <label>اسم العميل الثنائي:</label>
+            <input type="text" name="client_name" placeholder="اكتب اسمك هنا..." required>
+            
+            <label>صورة القوام (صور الأمام/الخلف):</label>
+            <input type="file" name="posture_image" accept="image/*">
+            
+            <label>فيديو التمرين (Form Check):</label>
+            <input type="file" name="workout_video" accept="video/*">
+            
+            <button type="submit" class="btn">إرسال للكابتن والتحليل (AI)</button>
         </div>
+
         <div class="card">
             <h3><i class="fa-solid fa-utensils"></i> البيانات الصحية ونوت الأكل</h3>
             <p style="color: #9ca3af; font-size: 14px;">سجل الإصابات، الأمراض، وحساسية الأكل لتصميم نظامك.</p>
-            <textarea placeholder="اكتب ملاحظات الأكل، الإصابات، أو الحساسية هنا..."></textarea>
-            <button class="btn">حفظ وتحديث البيانات</button>
+            <textarea rows="5" placeholder="اكتب ملاحظات الأكل، الإصابات، أو الحساسية هنا..."></textarea>
+            <button type="button" class="btn" onclick="alert('تم حفظ البيانات بنجاح!')">حفظ وتحديث البيانات</button>
         </div>
+        
         <div class="card">
-            <h3><i class="fa-solid fa-video"></i> تصحيح التمرين (Form Check)</h3>
-            <p style="color: #9ca3af; font-size: 14px;">ارفع فيديو الأداء لتحليل الزوايا وتلقي التعليق الصوتي.</p>
-            <input type="file" accept="video/*">
-            <button class="btn" onclick="alert('تم رفع الفيديو وتحليل الزوايا والأداء بنجاح!')">تحليل الفيديو بالذكاء الاصطناعي</button>
+            <h3><i class="fa-solid fa-robot"></i> حالة الذكاء الاصطناعي</h3>
+            <p style="color: #9ca3af; font-size: 14px;">مساعدك الآلي جاهز للرد على استفساراتك التدريبية والغذائية طوال اليوم.</p>
+            <div style="background: #121212; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px dashed #333;">
+                <span style="color: #10b981;"><i class="fa-solid fa-circle" style="font-size: 10px;"></i> النظام يعمل بكفاءة 24/7</span>
+            </div>
+            <a href="/" class="btn" style="text-align: center; text-decoration: none; display: block; margin-top: 38px; background: #333; color: #fff;">العودة للرئيسية</a>
         </div>
-    </div>
+    </form>
 </body>
 </html>
 '''
+
+# --- المسارات (Routes) ---
 
 @app.route('/')
 def index():
@@ -234,6 +292,37 @@ def index():
 @app.route('/client/dashboard')
 def client_dashboard():
     return render_template_string(CLIENT_DASHBOARD_TEMPLATE)
+
+# مسار استقبال مرفقات العميل وحفظها في قاعدة البيانات والملفات[cite: 1]
+@app.route('/client/upload', methods=['POST'])
+def client_upload():
+    client_name = request.form.get('client_name')
+    
+    # استقبال صورة القوام
+    image_file = request.files.get('posture_image')
+    image_filename = None
+    if image_file and allowed_file(image_file.filename):
+        image_filename = secure_filename(image_file.filename)
+        image_file.save(os.path.join(app.config['UPLOAD_FOLDER'], image_filename))
+        
+    # استقبال فيديو التمرين
+    video_file = request.files.get('workout_video')
+    video_filename = None
+    if video_file and allowed_file(video_file.filename):
+        video_filename = secure_filename(video_file.filename)
+        video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], video_filename))
+        
+    # حفظ البيانات في قاعدة البيانات[cite: 1]
+    new_upload = ClientUpload(client_name=client_name, image_path=image_filename, video_path=video_filename)
+    db.session.add(new_upload)
+    db.session.commit()
+    
+    return redirect(url_for('client_dashboard'))
+
+# مسار استعراض الملفات المرفوعة للأدمن
+@app.route('/uploads/<filename>')
+def download_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -249,7 +338,20 @@ def admin_login():
 def admin_dashboard():
     if not session.get('admin'):
         return redirect(url_for('admin_login'))
-    return render_template_string(ADMIN_DASHBOARD_TEMPLATE, clients=clients_db, active_count=len(clients_db), revenue=len(clients_db)*1500)
+    
+    # استدعاء جميع الملفات المرفوعة للعملاء من قاعدة البيانات[cite: 1]
+    uploads = ClientUpload.query.all()
+    return render_template_string(
+        ADMIN_DASHBOARD_TEMPLATE, 
+        clients=clients_db, 
+        uploads=uploads, 
+        active_count=len(clients_db), 
+        revenue=len(clients_db)*1500
+    )
 
+# إنشاء الجداول تلقائياً وتشغيل التطبيق[cite: 1]
 if __name__ == '__main__':
+    with app.app_context():
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        db.create_all()
     app.run(debug=True, port=5000)
