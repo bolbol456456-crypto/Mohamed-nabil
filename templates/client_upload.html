@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>منصة كابتن محمد نبيل - رفع الملفات</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #111; color: #fff; padding: 20px; text-align: center; }
+        form { background: #222; padding: 20px; border-radius: 10px; display: inline-block; width: 300px; }
+        input, button { margin: 10px 0; width: 100%; padding: 10px; }
+        button { background: #ffaa00; border: none; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>رفع تقييم القوام وفيديو التمرين</h2>
+    <form action="/client/upload" method="POST" enctype="multipart/form-data">
+        <label>اسم المشترك:</label>
+        <input type="text" name="client_name" required>
+        
+        <label>صورة تحليل القوام:</label>
+        <input type="file" name="posture_image" accept="image/*">
+        
+        <label>فيديو أداء التمرين:</label>
+        <input type="file" name="workout_video" accept="video/*">
+        
+        <button type="submit">إرسال للذكاء الاصطناعي</button>
+    </form>
+</body>
+</html>
