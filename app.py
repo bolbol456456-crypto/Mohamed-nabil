@@ -1,11 +1,12 @@
 import os
-from flask import Flask, render_template_string, request, redirect, url_for, session, send_from_directory, jsonify
+import random
+from flask import Flask, render_template_string, request, redirect, url_for, session, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = 'captain_mohamed_1993_secure_secret_key'
+app.secret_key = 'captain_mohamed_1993_ultimate_secure_key'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fitness_platform.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -15,7 +16,7 @@ UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'mp4', 'mov', 'avi'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# جدول العملاء والاشتراكات والمرفقات والبيانات الكاملة
+# جدول العملاء والاشتراكات والبيانات الاحترافية الشاملة
 class Client(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -39,7 +40,7 @@ class Client(db.Model):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# --- قوالب HTML والواجهات ---
+# --- القوالب والواجهات ---
 
 INDEX_TEMPLATE = '''
 <!DOCTYPE html>
@@ -96,7 +97,7 @@ INDEX_TEMPLATE = '''
 
     <section class="hero">
         <div>
-            <h1>اصنع نسخت الأفضل مع <span>كابتن محمد نبيل</span></h1>
+            <h1>اصنع نسختك الأفضل مع <span>كابتن محمد نبيل</span></h1>
             <p>متابعة احترافية شخصية، برامج تدريب وتغذية مخصصة، وتقييم شامل للقوام لتصل لهدفك بقوة.</p>
             <a href="#pricing" class="btn" style="padding: 15px 40px; font-size: 18px;">ابدأ رحلتك الآن</a>
         </div>
@@ -133,7 +134,7 @@ INDEX_TEMPLATE = '''
                 <label>صورة إيصال التحويل (إنستا باي):</label>
                 <input type="file" name="receipt" accept="image/*" required>
                 
-                <button type="submit" class="btn" style="width: 100%; margin-top: 15px; padding: 14px; font-size: 16px;">إرسال طلب الاشتراكوإيصال الدفع</button>
+                <button type="submit" class="btn" style="width: 100%; margin-top: 15px; padding: 14px; font-size: 16px;">إرسال طلب الاشتراك وإيصال الدفع</button>
             </form>
         </div>
     </section>
@@ -143,7 +144,6 @@ INDEX_TEMPLATE = '''
 </html>
 '''
 
-# صفحة دخول العميل بالكود السري
 CLIENT_LOGIN_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -174,7 +174,6 @@ CLIENT_LOGIN_TEMPLATE = '''
 </html>
 '''
 
-# لوحة تحكم العميل الاحترافية والشاملة
 CLIENT_DASHBOARD_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -196,8 +195,9 @@ CLIENT_DASHBOARD_TEMPLATE = '''
         .btn { background: var(--primary); color: #000; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; margin-top: 10px; }
         .btn:hover { background: #d97706; }
         .guide-box { background: #121212; padding: 15px; border-radius: 10px; border: 1px dashed #333; margin-bottom: 15px; font-size: 13px; color: var(--text-muted); }
-        .sample-img-container { display: flex; gap: 10px; margin-top: 10px; }
-        .sample-img-container img { width: 48%; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid var(--primary); }
+        .sample-img-container { display: flex; gap: 10px; margin-top: 10px; justify-content: space-between; }
+        .sample-img-container div { width: 48%; text-align: center; }
+        .sample-img-container img { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid var(--primary); }
     </style>
 </head>
 <body>
@@ -213,7 +213,7 @@ CLIENT_DASHBOARD_TEMPLATE = '''
     <form method="POST" enctype="multipart/form-data" class="grid">
         <!-- البيانات الشخصية والتارجت -->
         <div class="card">
-            <h3><i class="fa-solid id-card"></i> بيانات الجسم والأهداف</h3>
+            <h3><i class="fa-solid fa-user-gear"></i> بيانات الجسم والأهداف</h3>
             <label>السن (بالسنوات):</label>
             <input type="number" name="age" value="{{ client.age or '' }}" placeholder="مثال: 25">
             
@@ -246,30 +246,30 @@ CLIENT_DASHBOARD_TEMPLATE = '''
             <button type="submit" class="btn">تحديث الملف الصحي</button>
         </div>
 
-        <!-- تقييم انحراف القوام وكيفية التصوير -->
+        <!-- تقييم انحراف القوام وكيفية التصوير بالصور الجديدة -->
         <div class="card">
-            <h3><i class="fa-solid fa-child-reaching"></i> تقييم القوام (صور الوضعيات)</h3>
+            <h3><i class="fa-solid fa-child-reaching"></i> تقييم القوام (الوضعيات المثالية)</h3>
             <div class="guide-box">
-                <b>تعليمات التصوير الصحيح:</b>
-                <br>1. قف بشكل مستقيم ومطابق للصور الاسترشادية أدناه.
-                <br>2. التقط صورتين (صورة من الأمام وصورة من الخلف) بملابس رياضية واضحة لتحديد الانحرافات.
+                <b>إرشادات التصوير للتحليل الدقيق:</b>
+                <br>• المسافة بينك وبين الحائط: من 10 إلى 20 سم.
+                <br>• المسافة بين الموبايل (المثبت على حامل بمستوى البطن/الصدر) وبينك: من 2 إلى 3 متر ليظهر الجسم كاملاً.
             </div>
             
             <div class="sample-img-container">
                 <div>
-                    <span style="font-size:11px; color:#f59e0b;">وضعيات الأمام والجانب</span>
-                    <img src="{{ url_for('static', filename='uploads/IMG_0197_b2c25a.jpeg') }}" alt="وضعيف تصوير استرشادية">
+                    <span style="font-size:11px; color:#f59e0b; display:block; margin-bottom:3px;">الصورة الجانبية</span>
+                    <img src="{{ url_for('static', filename='uploads/IMG_0629_b339a4.png') }}" alt="الصورة الجانبية المثالية">
                 </div>
                 <div>
-                    <span style="font-size:11px; color:#f59e0b;">وضعيات الظهر والخلف</span>
-                    <img src="{{ url_for('static', filename='uploads/IMG_0196_b2c25a.jpeg') }}" alt="وضعيات تصوير الظهر">
+                    <span style="font-size:11px; color:#f59e0b; display:block; margin-bottom:3px;">الصورة الأمامية</span>
+                    <img src="{{ url_for('static', filename='uploads/IMG_0630_b339a4.jpeg') }}" alt="الصورة الأمامية المثالية">
                 </div>
             </div>
 
-            <label style="margin-top: 15px;">رفع صور القوام الجديدة:</label>
+            <label style="margin-top: 15px;">رفع صور القوام الخاصة بك:</label>
             <input type="file" name="posture_image" accept="image/*">
             {% if client.posture_image %}
-            <span style="color: #10b981; font-size: 12px;"><i class="fa-solid fa-check"></i> تم رفع صورة القوام بنجاح</span>
+            <span style="color: #10b981; font-size: 12px;"><i class="fa-solid fa-check"></i> تم رفع صور القوام بنجاح</span>
             {% endif %}
             <button type="submit" class="btn">رفع وربط صور القوام</button>
         </div>
@@ -293,7 +293,6 @@ CLIENT_DASHBOARD_TEMPLATE = '''
 </html>
 '''
 
-# لوحة تحكم الأدمن السرية (تتطلب PIN: 1993 بدون ظهور رابط لها بالواجهة الرئيسية)
 ADMIN_LOGIN_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -460,8 +459,6 @@ def admin_approve(client_id):
     client = Client.query.get(client_id)
     if client:
         client.is_approved = True
-        # توليد كود سري خاص فريد للعميل
-        import random
         client.access_code = f"MN-{client.id}-{random.randint(1000, 9999)}"
         db.session.commit()
     return redirect(url_for('admin_dashboard'))
@@ -473,5 +470,7 @@ def download_file(filename):
 if __name__ == '__main__':
     with app.app_context():
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        # تفعيل مسح قاعدة البيانات القديمة لضمان ظهور التعديلات فوراً دون مشاكل
+        db.drop_all()
         db.create_all()
     app.run(debug=True, port=5000)
